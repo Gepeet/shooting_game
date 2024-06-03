@@ -34,34 +34,104 @@ class SpaceShootingGame extends FlameGame with PanDetector{
    void onPanUpdate(DragUpdateInfo info){
       player.move(info.delta.global);
    }
+
+   @override
+   void onPanStart(DragStartInfo info){
+      player.startShooting();
+   }
+
+   @override
+   void onPanEnd(DragEndInfo info){
+      player.stopShooting();
+   }
 }
 
-class Player extends SpriteAnimationComponent with HasGameReference<SpaceShootingGame>{
+class Player extends SpriteAnimationComponent
+    with HasGameReference<SpaceShootingGame> {
+  Player()
+      : super(
+          size: Vector2(100, 150),
+          anchor: Anchor.center,
+        );
 
-   Player()
-      :super(
-         size: Vector2(80,100),
+  late final SpawnComponent _bulletSpawner;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+
+    animation = await game.loadSpriteAnimation(
+      'player.png',
+      SpriteAnimationData.sequenced(
+        amount: 4,
+        stepTime: .2,
+        textureSize: Vector2(32, 48),
+      ),
+    );
+
+    position = game.size / 2;
+
+    _bulletSpawner = SpawnComponent(
+      period: .2,
+      selfPositioning: true,
+      factory: (index) {
+        return Bullet(
+          position: position +
+              Vector2(
+                0,
+                -height / 2,
+              ),
+        );
+      },
+      autoStart: false,
+    );
+
+    game.add(_bulletSpawner);
+  }
+
+  void move(Vector2 delta) {
+    position.add(delta);
+  }
+
+  void startShooting() {
+    _bulletSpawner.timer.start();
+  }
+
+  void stopShooting() {
+    _bulletSpawner.timer.stop();
+  }
+}
+
+class Bullet extends SpriteAnimationComponent with HasGameReference<SpaceShootingGame>{
+   Bullet({
+      super.position,
+   }): super(
+   size:Vector2(25,50),
          anchor: Anchor.center,
       );
 
    @override
-   Future<void> onLoad() async{
+   Future<void>onLoad() async{
       await super.onLoad();
 
       animation = await game.loadSpriteAnimation(
-         'player.png',
+         'bullet.png',
          SpriteAnimationData.sequenced(
             amount: 4,
-            stepTime: .2,
-            textureSize: Vector2(32,48),
+            stepTime:.2,
+            textureSize: Vector2(8,16),
          )
       );
-
-      position = game.size/2;
    }
 
+   @override
+   void update(double dt){
+      super.update(dt);
 
-   void move(Vector2 delta){
-      position.add(delta);
+      position.y += dt * -500;
+
+      if(position.y < -height){
+         removeFromParent();
+      }
    }
 }
