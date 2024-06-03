@@ -1,3 +1,4 @@
+import 'package:flame/collisions.dart';
 import 'package:flutter/material.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
@@ -10,7 +11,7 @@ void main(){
    runApp(GameWidget(game:SpaceShootingGame()));
 }
 
-class SpaceShootingGame extends FlameGame with PanDetector{
+class SpaceShootingGame extends FlameGame with PanDetector, HasCollisionDetection{
    late Player player;
 
    @override
@@ -137,6 +138,11 @@ class Bullet extends SpriteAnimationComponent with HasGameReference<SpaceShootin
             textureSize: Vector2(8,16),
          )
       );
+add(
+      RectangleHitbox(
+        collisionType: CollisionType.passive,
+      ),
+    );
    }
 
    @override
@@ -154,15 +160,13 @@ class Bullet extends SpriteAnimationComponent with HasGameReference<SpaceShootin
 // E N E M Y
 
 class Enemy extends SpriteAnimationComponent
-    with HasGameReference<SpaceShootingGame> {
-
+    with HasGameReference<SpaceShootingGame>, CollisionCallbacks {
   Enemy({
     super.position,
   }) : super(
           size: Vector2.all(enemySize),
           anchor: Anchor.center,
         );
-
 
   static const enemySize = 50.0;
 
@@ -178,6 +182,8 @@ class Enemy extends SpriteAnimationComponent
         textureSize: Vector2.all(16),
       ),
     );
+
+    add(RectangleHitbox());
   }
 
   @override
@@ -189,5 +195,45 @@ class Enemy extends SpriteAnimationComponent
     if (position.y > game.size.y) {
       removeFromParent();
     }
+  }
+
+  @override
+  void onCollisionStart(
+    Set<Vector2> intersectionPoints,
+    PositionComponent other,
+  ) {
+    super.onCollisionStart(intersectionPoints, other);
+
+    if (other is Bullet) {
+      removeFromParent();
+      other.removeFromParent();
+      game.add(Explosion(position: position));
+    }
+  }
+}
+
+class Explosion extends SpriteAnimationComponent
+    with HasGameReference<SpaceShootingGame> {
+  Explosion({
+    super.position,
+  }) : super(
+          size: Vector2.all(150),
+          anchor: Anchor.center,
+          removeOnFinish: true,
+        );
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+
+    animation = await game.loadSpriteAnimation(
+      'explosion.png',
+      SpriteAnimationData.sequenced(
+        amount: 6,
+        stepTime: .1,
+        textureSize: Vector2.all(32),
+        loop: false,
+      ),
+    );
   }
 }
